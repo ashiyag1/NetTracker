@@ -23,8 +23,7 @@ This system replaces manual, error-prone spreadsheet tracking with a highly secu
     *   An automated, time-based scheduler running every night at 12:00 AM. It queries the database for devices whose manufacturer warranties are expiring in 30 days and logs them for replacement alerts.
 6.  **Audit-Ready CSV Export:**
     *   One-click client-side export allows administrators to download the currently filtered list of inventory directly into standard CSV spreadsheets.
-7.  **Electric Violet & Carbon Aesthetics:**
-    *   Clean carbon-charcoal dark interface styled with custom electric violet accents, optimized for operational center dashboards.
+
 
 ---
 
@@ -125,34 +124,4 @@ NetTrack/
     npm run audit
     ```
 
----
 
-## 🧠 Key Backend Security Architecture (Interview Topics)
-
-### 1. Payload Sanitization on Shared Routes
-When multiple roles access the same database endpoint, input validation is key. Our `PUT /api/devices/:id` route allows clients to report issues, but isolates the payload:
-```javascript
-// Inside Backend/routes/deviceRoutes.js
-if (req.user.role === 'client') {
-    if (req.body.status !== 'Broken') {
-        return res.status(403).json({ message: 'Forbidden action' });
-    }
-    updateData = { status: 'Broken' }; // Strips away all other edits (e.g. name, serialNumber)
-}
-```
-
-### 2. Edge-Ready JWT Signature Verification
-Instead of the standard `jsonwebtoken` package which depends on Node.js's native `crypto` library, NetTrack implements **`jose`**. It uses standard Web Crypto API (`TextEncoder`), making the backend compatible with edge runtimes (Vercel Edge, Cloudflare Workers).
-
-### 3. Google OAuth Token Verification Flow
-When the frontend sends a Google ID Token to `/api/auth/google`, the backend verifies it using Google's secure tokeninfo service:
-```javascript
-// Inside Backend/routes/authRoutes.js
-const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${token}`);
-const payload = await verifyRes.json();
-if (!verifyRes.ok) {
-    return res.status(400).json({ message: 'Invalid Google Identity token' });
-}
-const { email } = payload;
-```
-This ensures signature validation is offloaded securely to Google's key sets.
