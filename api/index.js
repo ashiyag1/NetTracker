@@ -1,7 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
-import dns from 'dns';
 import dotenv from 'dotenv';
 
 import deviceRoutes from '../Backend/routes/deviceRoutes.js';
@@ -9,7 +8,6 @@ import authRoutes from '../Backend/routes/authRoutes.js';
 import cronRoutes from '../Backend/routes/cronRoutes.js';
 
 dotenv.config();
-dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
 
@@ -20,8 +18,11 @@ app.use(express.json());
 let isConnected = false;
 async function connectDB() {
   if (isConnected) return;
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(process.env.MONGO_URI, {
+    serverSelectionTimeoutMS: 8000, // fail fast if Atlas is unreachable
+  });
   isConnected = true;
+  console.log('MongoDB connected');
 }
 connectDB().catch(console.error);
 
