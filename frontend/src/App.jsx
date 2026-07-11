@@ -1,64 +1,153 @@
-import React, { useState, useEffect } from 'react'; // 1. Import useEffect
+import React, { useState, useEffect } from 'react';
 import Stats from './components/Stats';
 import DeviceTable from './components/DeviceTable';
 import AddDeviceModal from './components/AddDeviceModal';
+import Login from './components/Login'; 
+import Navbar from './components/Navbar'; 
+import Landing from './components/Landing'; 
+import { ClientDirectory, ReportsCenter } from './components/ExtraTabs'; 
 
 function App() {
-  // Initialize devices as an empty array [] (no more mock data!)
+  // 1. Authentication State
+  const [user, setUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
+  // Tab Navigation State
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'clients', 'reports'
+  
+  // Device & Modal States
   const [devices, setDevices] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deviceToEdit, setDeviceToEdit] = useState(null);
 
-  // 2. Fetch all devices from our backend API when the page loads
+  // 2. SESSION RESTORE (Runs once when the app first loads)
   useEffect(() => {
-    fetchDevices();
-  }, []); // The empty array [] means "only run this once when the component first loads"
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser)); // Restores session from browser storage
+    }
+  }, []);
+
+  // 3. FETCH DEVICES (Runs automatically whenever the user logs in)
+  useEffect(() => {
+    if (user) {
+      fetchDevices();
+    } else {
+      setDevices([]); // Clear list if user logs out
+      setActiveTab('dashboard'); // Reset tab
+    }
+  }, [user]);
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/devices');
+      const response = await fetch('http://localhost:5000/api/devices', {
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
       const data = await response.json();
-      setDevices(data); // Save the database records into our state!
+
+      if (response.ok) {
+        setDevices(data);
+      } else {
+        console.error("API error:", data.message);
+      }
     } catch (error) {
       console.error("Error fetching devices:", error);
     }
   };
 
-  // 3. Save a new device to the database via API
+  // 4. Save a new device
   const addDevice = async (newDevice) => {
     try {
       const response = await fetch('http://localhost:5000/api/devices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify(newDevice)
       });
       const savedDevice = await response.json();
 
-      // Add the saved device (which has its real DB ID now) to our React state
-      setDevices([...devices, savedDevice]);
+      if (response.ok) {
+        setDevices([...devices, savedDevice]);
+      } else {
+        alert(savedDevice.message || "Failed to add device");
+      }
     } catch (error) {
       console.error("Error saving device:", error);
     }
   };
 
-  // Update a device via API
+  // 5. Update an existing device
   const updateDevice = async (updatedData) => {
     try {
       const response = await fetch(`http://localhost:5000/api/devices/${deviceToEdit._id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
         body: JSON.stringify(updatedData)
       });
       const data = await response.json();
 
-      // Replace the old device with the updated one in React state
-      setDevices(devices.map(d => d._id === data._id ? data : d));
+      if (response.ok) {
+        setDevices(devices.map(d => d._id === data._id ? data : d));
+      } else {
+        alert(data.message || "Failed to update device");
+      }
     } catch (error) {
       console.error("Error updating device:", error);
     }
   };
 
-  // Decide whether to add new or update existing
+  // 6. Delete a device
+  const deleteDevice = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/devices/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setDevices(devices.filter(device => device._id !== id));
+      } else {
+        alert(data.message || "Failed to delete device");
+      }
+    } catch (error) {
+      console.error("Error deleting device:", error);
+    }
+  };
+
+  // 7. Report an issue (For clients - PUT request that sets status to 'Broken')
+  const reportIssue = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/devices/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify({ status: 'Broken' })
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        setDevices(devices.map(d => d._id === data._id ? data : d));
+      } else {
+        alert(data.message || "Failed to report issue");
+      }
+    } catch (error) {
+      console.error("Error reporting issue:", error);
+    }
+  };
+
+  // Handle Save button (Decides whether to add new or update existing)
   const handleSaveDevice = (deviceData) => {
     if (deviceToEdit) {
       updateDevice(deviceData);
@@ -79,18 +168,16 @@ function App() {
     setDeviceToEdit(null);
   };
 
-  // 4. Delete a device from the database via API
-  const deleteDevice = async (id) => {
-    try {
-      await fetch(`http://localhost:5000/api/devices/${id}`, {
-        method: 'DELETE'
-      });
+  // LOGIN SUCCESS HANDLER
+  const handleLoginSuccess = (userData) => {
+    localStorage.setItem('user', JSON.stringify(userData)); 
+    setUser(userData); 
+  };
 
-      // Update our React state to remove the deleted device from the screen
-      setDevices(devices.filter(device => device._id !== id));
-    } catch (error) {
-      console.error("Error deleting device:", error);
-    }
+  // LOGOUT HANDLER
+  const handleLogout = () => {
+    localStorage.removeItem('user'); 
+    setUser(null); 
   };
 
   // Calculate counts dynamically from our state
@@ -103,47 +190,104 @@ function App() {
     const expiryDate = new Date(d.warrantyExpiry);
     const today = new Date();
     const diffTime = expiryDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Convert milliseconds to days
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
     return diffDays > 0 && diffDays <= 30;
   }).length;
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-12 animate-fade-in">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Header */}
-        <header className="mb-10 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white tracking-tight">NetTrack</h1>
-            <p className="text-slate-400 text-sm mt-1">MVD Digital Device Register</p>
-          </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold px-5 py-2.5 rounded-2xl shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 transition-all cursor-pointer"
+  // CONDITIONAL RENDERING GATE:
+  // If user is not logged in:
+  if (!user) {
+    if (showAuthModal) {
+      return (
+        <div className="relative min-h-screen bg-[#0c0c0e] flex flex-col">
+          <button
+            onClick={() => setShowAuthModal(false)}
+            className="absolute top-6 left-6 text-xs font-semibold text-[#a1a1aa] hover:text-white border border-[#1b1b1f] px-3.5 py-2 rounded-xl bg-[#16161a]/50 hover:bg-[#16161a] transition-all cursor-pointer z-50 uppercase tracking-wider"
           >
-            + Add Device
+            &larr; Back to Home
           </button>
-        </header>
+          <Login onLoginSuccess={handleLoginSuccess} />
+        </div>
+      );
+    }
+    return <Landing onGetStarted={() => setShowAuthModal(true)} />;
+  }
 
-        {/* Stats Section */}
-        <Stats 
-          activeCount={activeCount} 
-          brokenCount={brokenCount} 
-          expiringCount={expiringCount} 
-        />
+  const handleHomeClick = () => {
+    setShowAuthModal(false);
+    setActiveTab('dashboard'); // Go back to dashboard view
+    if (user) fetchDevices(); 
+  };
 
-        {/* Device Table Section */}
-        <DeviceTable devices={devices} onDelete={deleteDevice} onEdit={handleEditClick} />
+  return (
+    <div className="min-h-screen bg-[#0c0c0e] text-[#f4f4f5] pb-12 animate-fade-in">
+      
+      {/* 1. Header Navigation Bar */}
+      <Navbar 
+        username={user.username} 
+        onLogout={handleLogout} 
+        onHomeClick={handleHomeClick} 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
 
-        {/* Add Device Modal Popup */}
-        <AddDeviceModal 
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onAddDevice={handleSaveDevice}
-          deviceToEdit={deviceToEdit}
-        />
+      <div className="max-w-6xl mx-auto px-6">
+        
+        {/* 2. Conditionally Render Views based on Active Tab */}
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Header Action Section */}
+            <header className="mb-10 flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold text-white tracking-tight uppercase">System Dashboard</h1>
+                <p className="text-[#a1a1aa] text-xs mt-1">Real-time status of client hardware inventory</p>
+              </div>
+              {user.role !== 'client' && (
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="bg-[#8b5cf6] hover:bg-[#a78bfa] text-black font-extrabold px-5 py-2.5 rounded-xl shadow-lg shadow-[#8b5cf6]/10 hover:shadow-[#8b5cf6]/20 transition-all cursor-pointer text-sm uppercase tracking-wider"
+                >
+                  + Add Device
+                </button>
+              )}
+            </header>
+
+            {/* Metrics Stats Row */}
+            <Stats 
+              activeCount={activeCount} 
+              brokenCount={brokenCount} 
+              expiringCount={expiringCount} 
+            />
+
+            {/* Device List Table */}
+            <DeviceTable 
+              devices={devices} 
+              onDelete={deleteDevice} 
+              onEdit={handleEditClick} 
+              onReportIssue={reportIssue}
+              role={user.role}
+            />
+          </>
+        )}
+
+        {/* Clients Directory Tab */}
+        {activeTab === 'clients' && (
+          <ClientDirectory devices={devices} />
+        )}
+
+        {/* Maintenance Reports Tab */}
+        {activeTab === 'reports' && (
+          <ReportsCenter devices={devices} />
+        )}
 
       </div>
+
+      {/* 5. Sleek Footer */}
+      <footer className="max-w-6xl mx-auto px-6 mt-16 text-center text-xs text-[#52525b] border-t border-[#1b1b1f] pt-8">
+        <p>NetTrack &copy; 2026. Secure IT Asset Management System.</p>
+        <p className="mt-1.5 text-[#8b5cf6]/50 uppercase tracking-widest text-[9px] font-bold">All secure connections operational.</p>
+      </footer>
+
     </div>
   );
 }

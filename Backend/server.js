@@ -1,28 +1,41 @@
-// Import our tools
-const express = require('express');
-const mongoose = require('mongoose');
-const cors=require('cors');
-const dns = require('dns'); // Node's built-in DNS module
-require('dotenv').config(); 
+// 1. Import our tools using modern ES Module syntax
+import express from 'express';
+import mongoose from 'mongoose';
+import cors from 'cors';
+import dns from 'dns';
+import dotenv from 'dotenv';
+import cronRoutes from './routes/cronRoutes.js';
 
-// Set public DNS servers to resolve MongoDB Atlas SRV records
-dns.setServers(["1.1.1.1", "8.8.8.8"]); // added to override computer's default DNS provider
+// Import our routes (relative imports MUST include the .js extension in ES Modules)
+import deviceRoutes from './routes/deviceRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+
+// Load our environment variables
+dotenv.config();
+
+// 2. Set public DNS servers to resolve MongoDB Atlas SRV records
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
 const app = express();
 
-app.use(cors());
-app.use(express.json()); //to read json in POST reqs
+// Middleware
+app.use(cors()); 
+app.use(express.json()); 
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI) //promise 
-   .then(() => { //promise is successful
+mongoose.connect(process.env.MONGO_URI)
+   .then(() => {
     console.log('Connected to MongoDB');
    })
    .catch((err) => {
-    console.error('Error connecting to MongoDB:', err.message); //if there is an error
+    console.error('Error connecting to MongoDB:', err.message);
    });
 
-app.use('/api/devices', require('./routes/deviceRoutes')); 
+// Link our routes
+app.use('/api/devices', deviceRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/cron', cronRoutes);
+
 // Basic route
 app.get('/', (req, res) => {
     res.send('Welcome to the NetTrack API!');

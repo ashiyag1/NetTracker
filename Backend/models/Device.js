@@ -1,4 +1,4 @@
-const mongoose=require('mongoose');
+import mongoose from 'mongoose';
 
 const DeviceSchema= new mongoose.Schema({
     name:{
@@ -38,4 +38,4 @@ const DeviceSchema= new mongoose.Schema({
     timestamps: true // Automatically creates 'createdAt' and 'updatedAt' fields
 });
 
-module.exports=mongoose.model('Device',DeviceSchema);
+export default mongoose.model('Device', DeviceSchema);
