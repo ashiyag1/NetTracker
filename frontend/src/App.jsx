@@ -7,6 +7,8 @@ import Navbar from './components/Navbar';
 import Landing from './components/Landing'; 
 import { ClientDirectory, ReportsCenter } from './components/ExtraTabs'; 
 
+const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:5000/api' : '/api');
+
 function App() {
   // 1. Authentication State
   const [user, setUser] = useState(null);
@@ -40,7 +42,7 @@ function App() {
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/devices', {
+      const response = await fetch(`${API_URL}/devices`, {
         headers: {
           'Authorization': `Bearer ${user.token}`
         }
@@ -60,7 +62,7 @@ function App() {
   // 4. Save a new device
   const addDevice = async (newDevice) => {
     try {
-      const response = await fetch('http://localhost:5000/api/devices', {
+      const response = await fetch(`${API_URL}/devices`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -83,7 +85,7 @@ function App() {
   // 5. Update an existing device
   const updateDevice = async (updatedData) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/devices/${deviceToEdit._id}`, {
+      const response = await fetch(`${API_URL}/devices/${deviceToEdit._id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -106,7 +108,7 @@ function App() {
   // 6. Delete a device
   const deleteDevice = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/devices/${id}`, {
+      const response = await fetch(`${API_URL}/devices/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${user.token}`
@@ -127,7 +129,7 @@ function App() {
   // 7. Report an issue (For clients - PUT request that sets status to 'Broken')
   const reportIssue = async (id) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/devices/${id}`, {
+      const response = await fetch(`${API_URL}/devices/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',

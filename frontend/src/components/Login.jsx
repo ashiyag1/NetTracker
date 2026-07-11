@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:5000/api' : '/api');
+
 // We pass `onLoginSuccess` as a prop so we can tell the parent (App.jsx) that the user logged in
 function Login({ onLoginSuccess }) {
   const [isRegister, setIsRegister] = useState(false); // Toggles between Login and Register
@@ -39,7 +41,7 @@ function Login({ onLoginSuccess }) {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/google', {
+      const res = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: response.credential })
@@ -69,7 +71,7 @@ function Login({ onLoginSuccess }) {
     const endpoint = isRegister ? 'register' : 'login';
 
     try {
-      const response = await fetch(`http://localhost:5000/api/auth/${endpoint}`, {
+      const response = await fetch(`${API_URL}/auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, role, clientCompany })
