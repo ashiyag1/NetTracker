@@ -1,6 +1,6 @@
 # NetTrack: Secure IT Asset Registry & Ticket Manager
 
-NetTrack is a production-grade, full-stack MERN (MongoDB, Express, React, Node.js) web application built for IT infrastructure firms like **MVD Technologies** to manage hardware assets deployed across client office environments.
+NetTrack is a deployment-ready, full-stack MERN (MongoDB, Express, React, Node.js) web application built for IT infrastructure firms like **MVD Technologies** to manage hardware assets deployed across client office environments.
 
 This system replaces manual, error-prone spreadsheet tracking with a highly secure, real-time digital register featuring **Role-Based Access Control (RBAC)**, **Multi-Tenant Data Isolation**, and **Automated Maintenance Triggers**.
 
