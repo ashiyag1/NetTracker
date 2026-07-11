@@ -9,7 +9,7 @@
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "frontend/dist"
+        "distDir": "dist"
       }
     }
   ],
@@ -20,19 +20,19 @@
     },
     {
       "src": "/assets/(.*)",
-      "dest": "/assets/$1"
+      "dest": "/frontend/dist/assets/$1"
     },
     {
       "src": "/hero.jpg",
-      "dest": "/hero.jpg"
+      "dest": "/frontend/dist/hero.jpg"
     },
     {
       "src": "/favicon.svg",
-      "dest": "/favicon.svg"
+      "dest": "/frontend/dist/favicon.svg"
     },
     {
       "src": "/(.*)",
-      "dest": "/index.html"
+      "dest": "/frontend/dist/index.html"
     }
   ],
   "crons": [
