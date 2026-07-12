@@ -8,9 +8,9 @@ router.get('/', protect, authorize('admin', 'technician', 'client'), async (req,
     try {
         let queryFilter = {};
 
-        // If the logged-in user is a Client, they can ONLY see their own company's devices
+        // If the logged-in user is a Client, they can ONLY see their own company's devices (case-insensitive)
         if (req.user.role === 'client') {
-            queryFilter = { client: req.user.clientCompany }; 
+            queryFilter = { client: { $regex: new RegExp(`^${req.user.clientCompany}$`, 'i') } }; 
         }
 
         // Query the database using our filter
