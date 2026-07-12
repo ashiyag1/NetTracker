@@ -22,6 +22,20 @@ router.get('/', protect, authorize('admin', 'technician', 'client'), async (req,
     }
 });
 
+// GET all unique clients (Public)
+// Used by the frontend Login screen to populate registration dropdowns
+router.get('/clients', async (req, res) => {
+    try {
+        // Use MongoDB's distinct to get all unique client names currently stored in devices
+        const clients = await Device.distinct('client');
+        // Filter out any empty strings or nulls just in case, and sort alphabetically
+        const cleanClients = clients.filter(c => c && c.trim() !== '').sort();
+        res.json(cleanClients);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 router.post('/',protect, authorize('admin', 'technician'), async(req,res)=>{
     const device= new Device({
         name: req.body.name,

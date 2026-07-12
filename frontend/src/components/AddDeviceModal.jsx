@@ -9,6 +9,27 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
   const [serialNumber, setSerialNumber] = useState('');
   const [warrantyExpiry, setWarrantyExpiry] = useState('');
 
+  // State for dynamic client dropdown
+  const [availableClients, setAvailableClients] = useState([]);
+  const [isNewClient, setIsNewClient] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:5000/api' : '/api');
+
+  // Fetch available clients from backend on load
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await fetch(`${API_URL}/devices/clients`);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          setAvailableClients(data);
+        }
+      } catch (err) {
+        console.error("Failed to load clients:", err);
+      }
+    };
+    if (isOpen) fetchClients();
+  }, [isOpen]);
+
   useEffect(() => {
     if (deviceToEdit) {
       setName(deviceToEdit.name || '');
@@ -18,6 +39,8 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
       setLocation(deviceToEdit.location || '');
       setSerialNumber(deviceToEdit.serialNumber || '');
       setWarrantyExpiry(deviceToEdit.warrantyExpiry ? deviceToEdit.warrantyExpiry.split('T')[0] : '');
+      // If editing a device whose client isn't in the list (rare but possible), default to text input
+      setIsNewClient(false); 
     } else {
       setName('');
       setType('Router');
@@ -26,6 +49,7 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
       setLocation('');
       setSerialNumber('');
       setWarrantyExpiry('');
+      setIsNewClient(false);
     }
   }, [deviceToEdit, isOpen]);
 
@@ -90,14 +114,49 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
           {/* Client */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Client Name *</label>
-            <input
-              type="text"
-              placeholder="e.g. HDFC Bank"
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
-              required
-            />
+            
+            {/* If the user clicked 'Add New Client', or there are no existing clients, show text input */}
+            {(isNewClient || availableClients.length === 0) ? (
+              <div className="relative animate-fade-in">
+                <input
+                  type="text"
+                  placeholder="e.g. HDFC Bank"
+                  value={client}
+                  onChange={(e) => setClient(e.target.value)}
+                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                  required
+                />
+                {availableClients.length > 0 && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsNewClient(false)}
+                    className="absolute right-3 top-2.5 text-xs text-[#8b5cf6] hover:text-[#a78bfa] font-bold uppercase tracking-wider"
+                  >
+                    Use Existing
+                  </button>
+                )}
+              </div>
+            ) : (
+              <select
+                value={client}
+                onChange={(e) => {
+                  if (e.target.value === 'ADD_NEW') {
+                    setIsNewClient(true);
+                    setClient('');
+                  } else {
+                    setClient(e.target.value);
+                  }
+                }}
+                className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
+                required
+              >
+                <option value="" disabled>Select an existing client...</option>
+                {availableClients.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+                <option value="ADD_NEW" className="font-bold text-[#a78bfa]">+ Add New Client...</option>
+              </select>
+            )}
           </div>
 
           {/* Type and Status */}

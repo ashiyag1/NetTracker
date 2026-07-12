@@ -16,6 +16,27 @@ function Login({ onLoginSuccess }) {
   const [pendingGoogleToken, setPendingGoogleToken] = useState(null);
   const [showCompanyPrompt, setShowCompanyPrompt] = useState(false);
 
+  // State for dynamic client dropdown
+  const [availableClients, setAvailableClients] = useState([]);
+
+  // Fetch available clients from backend on load
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await fetch(`${API_URL}/devices/clients`);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          setAvailableClients(data);
+          // Set a default selected client if the array isn't empty
+          if (data.length > 0) setClientCompany(data[0]);
+        }
+      } catch (err) {
+        console.error("Failed to load clients:", err);
+      }
+    };
+    fetchClients();
+  }, []);
+
   // Initialize Google Sign-in on Mount / Toggle
   useEffect(() => {
     /* global google */
@@ -163,16 +184,30 @@ function Login({ onLoginSuccess }) {
               Almost done! Please provide your company name to complete your Google registration.
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Client Company Name</label>
-              <input
-                type="text"
-                placeholder="e.g. HDFC or Cisco (Case Sensitive)"
-                value={clientCompany}
-                onChange={(e) => setClientCompany(e.target.value)}
-                className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
-                required
-              />
-              <p className="text-slate-500 text-xs mt-1">Must match the exact client name of your devices.</p>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Your Client Company</label>
+              {availableClients.length > 0 ? (
+                <select
+                  value={clientCompany}
+                  onChange={(e) => setClientCompany(e.target.value)}
+                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
+                  required
+                >
+                  <option value="" disabled>Select your company...</option>
+                  {availableClients.map(client => (
+                    <option key={client} value={client}>{client}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="e.g. HDFC or Cisco"
+                  value={clientCompany}
+                  onChange={(e) => setClientCompany(e.target.value)}
+                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
+                  required
+                />
+              )}
+              <p className="text-slate-500 text-xs mt-1">If your company is not listed, an Admin must add it first.</p>
             </div>
             
             <button
@@ -241,16 +276,30 @@ function Login({ onLoginSuccess }) {
             {/* Show this field only if the role is 'client' during registration */}
             {isRegister && role === 'client' && (
               <div className="animate-fade-in">
-                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Client Company Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. HDFC or Cisco (Case Sensitive)"
-                  value={clientCompany}
-                  onChange={(e) => setClientCompany(e.target.value)}
-                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
-                  required
-                />
-                <p className="text-slate-500 text-xs mt-1">Must match the exact client name of their devices.</p>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Your Client Company</label>
+                {availableClients.length > 0 ? (
+                  <select
+                    value={clientCompany}
+                    onChange={(e) => setClientCompany(e.target.value)}
+                    className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
+                    required
+                  >
+                    <option value="" disabled>Select your company...</option>
+                    {availableClients.map(client => (
+                      <option key={client} value={client}>{client}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="e.g. HDFC or Cisco"
+                    value={clientCompany}
+                    onChange={(e) => setClientCompany(e.target.value)}
+                    className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
+                    required
+                  />
+                )}
+                <p className="text-slate-500 text-xs mt-1">If your company is not listed, an Admin must add it first.</p>
               </div>
             )}
 
