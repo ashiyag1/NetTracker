@@ -284,6 +284,14 @@ function App() {
 
       </div>
 
+      {/* Add / Edit Device Modal Popup */}
+      <AddDeviceModal 
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onAddDevice={handleSaveDevice}
+        deviceToEdit={deviceToEdit}
+      />
+
       {/* 5. Sleek Footer */}
       <footer className="max-w-6xl mx-auto px-6 mt-16 text-center text-xs text-[#52525b] border-t border-[#1b1b1f] pt-8">
         <p>NetTrack &copy; 2026. Secure IT Asset Management System.</p>
