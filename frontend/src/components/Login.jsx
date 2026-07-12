@@ -11,6 +11,10 @@ function Login({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState('client'); // default role for testing
   const [clientCompany, setClientCompany] = useState('');
+  
+  // New state for 2-step Google Registration
+  const [pendingGoogleToken, setPendingGoogleToken] = useState(null);
+  const [showCompanyPrompt, setShowCompanyPrompt] = useState(false);
 
   // Initialize Google Sign-in on Mount / Toggle
   useEffect(() => {
@@ -49,6 +53,14 @@ function Login({ onLoginSuccess }) {
 
       const data = await res.json();
 
+      if (res.status === 428 && data.requiresCompany) {
+        // First-time Google user needs to provide a company
+        setPendingGoogleToken(response.credential);
+        setShowCompanyPrompt(true);
+        setLoading(false);
+        return; // Pause the flow here
+      }
+
       if (!res.ok) {
         throw new Error(data.message || 'Google Authentication failed');
       }
@@ -57,7 +69,35 @@ function Login({ onLoginSuccess }) {
       onLoginSuccess(data);
     } catch (err) {
       setError(err.message);
-    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Submit Handler for Google 2nd-step (Company Prompt)
+  const handleGoogleCompanySubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token: pendingGoogleToken, 
+          clientCompany: clientCompany 
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || 'Google Authentication failed');
+      }
+
+      onLoginSuccess(data);
+    } catch (err) {
+      setError(err.message);
       setLoading(false);
     }
   };
@@ -116,53 +156,13 @@ function Login({ onLoginSuccess }) {
           </div>
         )}
 
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} className="space-y-5 relative">
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Username</label>
-            <input
-              type="text"
-              placeholder="e.g. technician1"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Password</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
-              required
-            />
-          </div>
-
-          {isRegister && (
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Account Role</label>
-              <select
-                value={role}
-                onChange={(e) => {
-                  setRole(e.target.value);
-                  if (e.target.value !== 'client') setClientCompany(''); // Reset if not client
-                }}
-                className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
-              >
-                <option value="client">Client (Read-Only)</option>
-                <option value="technician">Technician (Add & Edit)</option>
-                <option value="admin">Admin (All Permissions)</option>
-              </select>
+        {/* Show Company Prompt if Google Auth requires it, else show standard Form */}
+        {showCompanyPrompt ? (
+          <form onSubmit={handleGoogleCompanySubmit} className="space-y-5 relative animate-fade-in">
+            <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-4 py-3 rounded-xl text-sm mb-6">
+              Almost done! Please provide your company name to complete your Google registration.
             </div>
-          )}
-
-          {/* Show this field only if the role is 'client' during registration */}
-          {isRegister && role === 'client' && (
-            <div className="animate-fade-in">
+            <div>
               <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Client Company Name</label>
               <input
                 type="text"
@@ -172,52 +172,136 @@ function Login({ onLoginSuccess }) {
                 className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
                 required
               />
-              <p className="text-slate-500 text-xs mt-1">Must match the exact client name of their devices.</p>
+              <p className="text-slate-500 text-xs mt-1">Must match the exact client name of your devices.</p>
             </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#8b5cf6] hover:bg-[#a78bfa] disabled:bg-[#8b5cf6]/60 text-black font-extrabold py-3.5 rounded-xl shadow-lg shadow-[#8b5cf6]/10 hover:shadow-[#8b5cf6]/20 transition-all cursor-pointer text-sm uppercase tracking-wider"
-          >
-            {loading ? 'Processing...' : isRegister ? 'Create Account' : 'Sign In'}
-          </button>
-        </form>
-
-        {/* Divider */}
-        <div className="relative flex py-4 items-center justify-center text-xs text-zinc-600 uppercase">
-          <span className="border-t border-[#1b1b1f] flex-grow"></span>
-          <span className="mx-4 font-bold tracking-wider">Or</span>
-          <span className="border-t border-[#1b1b1f] flex-grow"></span>
-        </div>
-
-        {/* Google Sign In Button Container */}
-        <div className="flex justify-center w-full min-h-[44px]">
-          {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
-            <div id="google-signin-btn" className="w-full flex justify-center"></div>
-          ) : (
-            <p className="text-zinc-600 text-[10px] text-center uppercase tracking-widest font-bold">
-              Google Auth: Client ID missing in .env
-            </p>
-          )}
-        </div>
-
-        {/* Switch Mode Link */}
-        <div className="text-center mt-6 text-sm relative">
-          <p className="text-slate-400">
-            {isRegister ? 'Already have an account?' : 'New to NetTrack?'}
+            
             <button
-              onClick={() => {
-                setIsRegister(!isRegister);
-                setError('');
-              }}
-              className="text-[#8b5cf6] hover:text-[#a78bfa] font-bold ml-2 transition-colors cursor-pointer"
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#8b5cf6] hover:bg-[#a78bfa] disabled:bg-[#8b5cf6]/60 text-black font-extrabold py-3.5 rounded-xl shadow-lg shadow-[#8b5cf6]/10 hover:shadow-[#8b5cf6]/20 transition-all cursor-pointer text-sm uppercase tracking-wider mt-4"
             >
-              {isRegister ? 'Sign In' : 'Create Account'}
+              {loading ? 'Processing...' : 'Complete Registration'}
             </button>
-          </p>
-        </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCompanyPrompt(false);
+                setPendingGoogleToken(null);
+                setClientCompany('');
+              }}
+              className="w-full text-[#a1a1aa] hover:text-white text-xs mt-3 uppercase font-bold tracking-widest cursor-pointer"
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5 relative">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Username</label>
+              <input
+                type="text"
+                placeholder="e.g. technician1"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Password</label>
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                required
+              />
+            </div>
+
+            {isRegister && (
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Account Role</label>
+                <select
+                  value={role}
+                  onChange={(e) => {
+                    setRole(e.target.value);
+                    if (e.target.value !== 'client') setClientCompany(''); // Reset if not client
+                  }}
+                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
+                >
+                  <option value="client">Client (Read-Only)</option>
+                  <option value="technician">Technician (Add & Edit)</option>
+                  <option value="admin">Admin (All Permissions)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Show this field only if the role is 'client' during registration */}
+            {isRegister && role === 'client' && (
+              <div className="animate-fade-in">
+                <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Client Company Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. HDFC or Cisco (Case Sensitive)"
+                  value={clientCompany}
+                  onChange={(e) => setClientCompany(e.target.value)}
+                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
+                  required
+                />
+                <p className="text-slate-500 text-xs mt-1">Must match the exact client name of their devices.</p>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#8b5cf6] hover:bg-[#a78bfa] disabled:bg-[#8b5cf6]/60 text-black font-extrabold py-3.5 rounded-xl shadow-lg shadow-[#8b5cf6]/10 hover:shadow-[#8b5cf6]/20 transition-all cursor-pointer text-sm uppercase tracking-wider"
+            >
+              {loading ? 'Processing...' : isRegister ? 'Create Account' : 'Sign In'}
+            </button>
+          </form>
+        )}
+
+        {/* Hide OR divider, Google button, and mode switch when prompting for company */}
+        {!showCompanyPrompt && (
+          <>
+            {/* Divider */}
+            <div className="relative flex py-4 items-center justify-center text-xs text-zinc-600 uppercase">
+              <span className="border-t border-[#1b1b1f] flex-grow"></span>
+              <span className="mx-4 font-bold tracking-wider">Or</span>
+              <span className="border-t border-[#1b1b1f] flex-grow"></span>
+            </div>
+
+            {/* Google Sign In Button Container */}
+            <div className="flex justify-center w-full min-h-[44px]">
+              {import.meta.env.VITE_GOOGLE_CLIENT_ID ? (
+                <div id="google-signin-btn" className="w-full flex justify-center"></div>
+              ) : (
+                <p className="text-zinc-600 text-[10px] text-center uppercase tracking-widest font-bold">
+                  Google Auth: Client ID missing in .env
+                </p>
+              )}
+            </div>
+
+            {/* Switch Mode Link */}
+            <div className="text-center mt-6 text-sm relative">
+              <p className="text-slate-400">
+                {isRegister ? 'Already have an account?' : 'New to NetTrack?'}
+                <button
+                  onClick={() => {
+                    setIsRegister(!isRegister);
+                    setError('');
+                  }}
+                  className="text-[#8b5cf6] hover:text-[#a78bfa] font-bold ml-2 transition-colors cursor-pointer"
+                >
+                  {isRegister ? 'Sign In' : 'Create Account'}
+                </button>
+              </p>
+            </div>
+          </>
+        )}
 
       </div>
     </div>

@@ -84,7 +84,7 @@ router.post('/login', async (req, res) => {
 
 // 3. GOOGLE SIGN IN (POST /api/auth/google)
 router.post('/google', async (req, res) => {
-    const { token } = req.body;
+    const { token, clientCompany } = req.body;
 
     try {
         // A. Verify Google ID token using Google API
@@ -101,12 +101,21 @@ router.post('/google', async (req, res) => {
         let user = await User.findOne({ username: email });
 
         if (!user) {
-            // Register a new Client user using their Google details
+            // New User: Check if clientCompany was provided in the second step of the flow
+            if (!clientCompany) {
+                // If no company provided, pause registration and tell frontend to prompt the user
+                return res.status(428).json({ 
+                    requiresCompany: true, 
+                    message: 'Please provide your Client Company Name to complete registration.' 
+                });
+            }
+
+            // Register a new Client user using their Google details and provided company
             user = await User.create({
                 username: email,
                 password: Math.random().toString(36).slice(-10), // Random password
                 role: 'client', // Default role is client
-                clientCompany: 'MVD Headquarters' // Default company
+                clientCompany: clientCompany // Uses the company provided by the user
             });
         }
 
