@@ -22,14 +22,21 @@ router.get('/', protect, authorize('admin', 'technician', 'client'), async (req,
     }
 });
 
+import User from '../models/User.js';
+
 // GET all unique clients (Public)
 // Used by the frontend Login screen to populate registration dropdowns
 router.get('/clients', async (req, res) => {
     try {
-        // Use MongoDB's distinct to get all unique client names currently stored in devices
-        const clients = await Device.distinct('client');
-        // Filter out any empty strings or nulls just in case, and sort alphabetically
-        const cleanClients = clients.filter(c => c && c.trim() !== '').sort();
+        // Fetch unique clients from both Devices and Users (so empty companies aren't missing)
+        const deviceClients = await Device.distinct('client');
+        const userClients = await User.distinct('clientCompany');
+        
+        // Merge and deduplicate
+        const allClients = [...new Set([...deviceClients, ...userClients])];
+        
+        // Filter out any empty strings or nulls, and sort alphabetically
+        const cleanClients = allClients.filter(c => c && c.trim() !== '').sort();
         res.json(cleanClients);
     } catch (error) {
         res.status(500).json({ message: error.message });

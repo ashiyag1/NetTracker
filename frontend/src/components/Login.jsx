@@ -18,6 +18,7 @@ function Login({ onLoginSuccess }) {
 
   // State for dynamic client dropdown
   const [availableClients, setAvailableClients] = useState([]);
+  const [isNewClient, setIsNewClient] = useState(false);
 
   // Fetch available clients from backend on load
   useEffect(() => {
@@ -131,6 +132,13 @@ function Login({ onLoginSuccess }) {
 
     const endpoint = isRegister ? 'register' : 'login';
 
+    // Form validation check if they selected "ADD_NEW" but didn't actually type a company
+    if (isRegister && role === 'client' && (!clientCompany || clientCompany === 'ADD_NEW')) {
+      setError("Please provide a valid Client Company name.");
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/auth/${endpoint}`, {
         method: 'POST',
@@ -185,10 +193,38 @@ function Login({ onLoginSuccess }) {
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Your Client Company</label>
-              {availableClients.length > 0 ? (
+              
+              {(isNewClient || availableClients.length === 0) ? (
+                <div className="relative animate-fade-in">
+                  <input
+                    type="text"
+                    placeholder="e.g. HDFC Bank"
+                    value={clientCompany === 'ADD_NEW' ? '' : clientCompany}
+                    onChange={(e) => setClientCompany(e.target.value)}
+                    className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                    required
+                  />
+                  {availableClients.length > 0 && (
+                    <button 
+                      type="button" 
+                      onClick={() => setIsNewClient(false)}
+                      className="absolute right-3 top-3 text-xs text-[#8b5cf6] hover:text-[#a78bfa] font-bold uppercase tracking-wider"
+                    >
+                      Use Existing
+                    </button>
+                  )}
+                </div>
+              ) : (
                 <select
                   value={clientCompany}
-                  onChange={(e) => setClientCompany(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value === 'ADD_NEW') {
+                      setIsNewClient(true);
+                      setClientCompany('');
+                    } else {
+                      setClientCompany(e.target.value);
+                    }
+                  }}
                   className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
                   required
                 >
@@ -196,18 +232,9 @@ function Login({ onLoginSuccess }) {
                   {availableClients.map(client => (
                     <option key={client} value={client}>{client}</option>
                   ))}
+                  <option value="ADD_NEW" className="font-bold text-[#a78bfa]">+ Add New Client...</option>
                 </select>
-              ) : (
-                <input
-                  type="text"
-                  placeholder="e.g. HDFC or Cisco"
-                  value={clientCompany}
-                  onChange={(e) => setClientCompany(e.target.value)}
-                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
-                  required
-                />
               )}
-              <p className="text-slate-500 text-xs mt-1">If your company is not listed, an Admin must add it first.</p>
             </div>
             
             <button
@@ -277,10 +304,37 @@ function Login({ onLoginSuccess }) {
             {isRegister && role === 'client' && (
               <div className="animate-fade-in">
                 <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Select Your Client Company</label>
-                {availableClients.length > 0 ? (
+                {(isNewClient || availableClients.length === 0) ? (
+                  <div className="relative animate-fade-in">
+                    <input
+                      type="text"
+                      placeholder="e.g. HDFC Bank"
+                      value={clientCompany === 'ADD_NEW' ? '' : clientCompany}
+                      onChange={(e) => setClientCompany(e.target.value)}
+                      className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                      required
+                    />
+                    {availableClients.length > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={() => setIsNewClient(false)}
+                        className="absolute right-3 top-3 text-xs text-[#8b5cf6] hover:text-[#a78bfa] font-bold uppercase tracking-wider"
+                      >
+                        Use Existing
+                      </button>
+                    )}
+                  </div>
+                ) : (
                   <select
                     value={clientCompany}
-                    onChange={(e) => setClientCompany(e.target.value)}
+                    onChange={(e) => {
+                      if (e.target.value === 'ADD_NEW') {
+                        setIsNewClient(true);
+                        setClientCompany('');
+                      } else {
+                        setClientCompany(e.target.value);
+                      }
+                    }}
                     className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
                     required
                   >
@@ -288,18 +342,9 @@ function Login({ onLoginSuccess }) {
                     {availableClients.map(client => (
                       <option key={client} value={client}>{client}</option>
                     ))}
+                    <option value="ADD_NEW" className="font-bold text-[#a78bfa]">+ Add New Client...</option>
                   </select>
-                ) : (
-                  <input
-                    type="text"
-                    placeholder="e.g. HDFC or Cisco"
-                    value={clientCompany}
-                    onChange={(e) => setClientCompany(e.target.value)}
-                    className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#8b5cf6]"
-                    required
-                  />
                 )}
-                <p className="text-slate-500 text-xs mt-1">If your company is not listed, an Admin must add it first.</p>
               </div>
             )}
 
