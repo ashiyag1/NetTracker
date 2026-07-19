@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
+import { deviceService } from '../services/api';
+
 function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
   const [name, setName] = useState('');
   const [type, setType] = useState('Router');
@@ -9,25 +11,28 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
   const [serialNumber, setSerialNumber] = useState('');
   const [warrantyExpiry, setWarrantyExpiry] = useState('');
 
-  // State for dynamic client dropdown
+  // State for dynamic dropdowns
   const [availableClients, setAvailableClients] = useState([]);
   const [isNewClient, setIsNewClient] = useState(false);
-  const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:5000/api' : '/api');
+  
+  const [availableNames, setAvailableNames] = useState([]);
+  const [isNewName, setIsNewName] = useState(false);
 
-  // Fetch available clients from backend on load
+  // Fetch available clients and device names from backend on load
   useEffect(() => {
-    const fetchClients = async () => {
+    const fetchDropdownData = async () => {
       try {
-        const res = await fetch(`${API_URL}/devices/clients`);
-        const data = await res.json();
-        if (res.ok && Array.isArray(data)) {
-          setAvailableClients(data);
-        }
+        const [clientsData, namesData] = await Promise.all([
+          deviceService.getUniqueClients(),
+          deviceService.getUniqueDeviceNames()
+        ]);
+        if (Array.isArray(clientsData)) setAvailableClients(clientsData);
+        if (Array.isArray(namesData)) setAvailableNames(namesData);
       } catch (err) {
-        console.error("Failed to load clients:", err);
+        console.error("Failed to load dropdown data:", err);
       }
     };
-    if (isOpen) fetchClients();
+    if (isOpen) fetchDropdownData();
   }, [isOpen]);
 
   useEffect(() => {
@@ -39,8 +44,8 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
       setLocation(deviceToEdit.location || '');
       setSerialNumber(deviceToEdit.serialNumber || '');
       setWarrantyExpiry(deviceToEdit.warrantyExpiry ? deviceToEdit.warrantyExpiry.split('T')[0] : '');
-      // If editing a device whose client isn't in the list (rare but possible), default to text input
       setIsNewClient(false); 
+      setIsNewName(false);
     } else {
       setName('');
       setType('Router');
@@ -50,6 +55,7 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
       setSerialNumber('');
       setWarrantyExpiry('');
       setIsNewClient(false);
+      setIsNewName(false);
     }
   }, [deviceToEdit, isOpen]);
 
@@ -101,14 +107,48 @@ function AddDeviceModal({ isOpen, onClose, onAddDevice, deviceToEdit }) {
           {/* Device Name */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Device Name *</label>
-            <input
-              type="text"
-              placeholder="e.g. Core Switch 24-Port"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
-              required
-            />
+            
+            {(isNewName || availableNames.length === 0) ? (
+              <div className="relative animate-fade-in">
+                <input
+                  type="text"
+                  placeholder="e.g. Core Switch 24-Port"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#8b5cf6] transition-colors"
+                  required
+                />
+                {availableNames.length > 0 && (
+                  <button 
+                    type="button" 
+                    onClick={() => setIsNewName(false)}
+                    className="absolute right-3 top-2.5 text-xs text-[#8b5cf6] hover:text-[#a78bfa] font-bold uppercase tracking-wider"
+                  >
+                    Use Existing
+                  </button>
+                )}
+              </div>
+            ) : (
+              <select
+                value={name}
+                onChange={(e) => {
+                  if (e.target.value === 'ADD_NEW') {
+                    setIsNewName(true);
+                    setName('');
+                  } else {
+                    setName(e.target.value);
+                  }
+                }}
+                className="w-full bg-[#1c1c22] border border-[#2c2c35] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#8b5cf6] cursor-pointer"
+                required
+              >
+                <option value="" disabled>Select an existing device name...</option>
+                {availableNames.map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+                <option value="ADD_NEW" className="font-bold text-[#a78bfa]">+ Add New Device Name...</option>
+              </select>
+            )}
           </div>
 
           {/* Client */}

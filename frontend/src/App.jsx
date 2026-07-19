@@ -6,8 +6,7 @@ import Login from './components/Login';
 import Navbar from './components/Navbar'; 
 import Landing from './components/Landing'; 
 import { ClientDirectory, ReportsCenter } from './components/ExtraTabs'; 
-
-const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.origin.includes('localhost') ? 'http://localhost:5000/api' : '/api');
+import { deviceService } from './services/api';
 
 function App() {
   // 1. Authentication State
@@ -42,18 +41,8 @@ function App() {
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch(`${API_URL}/devices`, {
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setDevices(data);
-      } else {
-        console.error("API error:", data.message);
-      }
+      const data = await deviceService.getAll(user.token);
+      setDevices(data);
     } catch (error) {
       console.error("Error fetching devices:", error);
     }
@@ -62,90 +51,44 @@ function App() {
   // 4. Save a new device
   const addDevice = async (newDevice) => {
     try {
-      const response = await fetch(`${API_URL}/devices`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify(newDevice)
-      });
-      const savedDevice = await response.json();
-
-      if (response.ok) {
-        setDevices([...devices, savedDevice]);
-      } else {
-        alert(savedDevice.message || "Failed to add device");
-      }
+      const savedDevice = await deviceService.create(user.token, newDevice);
+      setDevices([...devices, savedDevice]);
     } catch (error) {
       console.error("Error saving device:", error);
+      alert(error.message || "Failed to add device");
     }
   };
 
   // 5. Update an existing device
   const updateDevice = async (updatedData) => {
     try {
-      const response = await fetch(`${API_URL}/devices/${deviceToEdit._id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify(updatedData)
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setDevices(devices.map(d => d._id === data._id ? data : d));
-      } else {
-        alert(data.message || "Failed to update device");
-      }
+      const data = await deviceService.update(user.token, deviceToEdit._id, updatedData);
+      setDevices(devices.map(d => d._id === data._id ? data : d));
     } catch (error) {
       console.error("Error updating device:", error);
+      alert(error.message || "Failed to update device");
     }
   };
 
   // 6. Delete a device
   const deleteDevice = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/devices/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setDevices(devices.filter(device => device._id !== id));
-      } else {
-        alert(data.message || "Failed to delete device");
-      }
+      await deviceService.delete(user.token, id);
+      setDevices(devices.filter(device => device._id !== id));
     } catch (error) {
       console.error("Error deleting device:", error);
+      alert(error.message || "Failed to delete device");
     }
   };
 
-  // 7. Report an issue (For clients - PUT request that sets status to 'Broken')
+  // 7. Report an issue (For clients)
   const reportIssue = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/devices/${id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify({ status: 'Broken' })
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setDevices(devices.map(d => d._id === data._id ? data : d));
-      } else {
-        alert(data.message || "Failed to report issue");
-      }
+      const data = await deviceService.reportIssue(user.token, id);
+      setDevices(devices.map(d => d._id === data._id ? data : d));
     } catch (error) {
       console.error("Error reporting issue:", error);
+      alert(error.message || "Failed to report issue");
     }
   };
 
