@@ -7,6 +7,10 @@ function DeviceTable({ devices, onDelete, onEdit, onReportIssue, role }) {
   const [typeFilter, setTypeFilter] = useState('All');
   const [clientFilter, setClientFilter] = useState('All');
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
   // Dynamically get all unique client company names for our filter dropdown
   const clientCompanies = ['All', ...new Set(devices.map(d => d.client).filter(Boolean))];
 
@@ -27,6 +31,18 @@ function DeviceTable({ devices, onDelete, onEdit, onReportIssue, role }) {
     
     return matchSearch && matchStatus && matchType && matchClient;
   });
+
+  // Reset to page 1 whenever any filter changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, typeFilter, clientFilter]);
+
+  // Pagination Math
+  const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
+  const paginatedDevices = filteredDevices.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   // Helper function to return nice CSS colors for different statuses
   const getStatusBadge = (status) => {
@@ -153,8 +169,8 @@ function DeviceTable({ devices, onDelete, onEdit, onReportIssue, role }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1b1b1f]/50 text-sm text-slate-300">
-            {filteredDevices.length > 0 ? (
-              filteredDevices.map((device) => (
+            {paginatedDevices.length > 0 ? (
+              paginatedDevices.map((device) => (
                 <tr key={device._id} className="hover:bg-[#1c1c22]/30 transition-colors group">
                   <td className="py-4 px-4 font-semibold text-white group-hover:text-[#8b5cf6] transition-colors">
                     {device.name}
@@ -221,6 +237,40 @@ function DeviceTable({ devices, onDelete, onEdit, onReportIssue, role }) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination UI */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-[#1b1b1f] pt-4 mt-4">
+          <p className="text-xs text-slate-500">
+            Showing <span className="font-semibold text-white">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-semibold text-white">{Math.min(currentPage * itemsPerPage, filteredDevices.length)}</span> of <span className="font-semibold text-white">{filteredDevices.length}</span> devices
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
+                currentPage === 1 
+                  ? 'bg-[#1c1c22] text-slate-600 cursor-not-allowed' 
+                  : 'bg-[#2c2c35] text-white hover:bg-[#8b5cf6] hover:text-black cursor-pointer'
+              }`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all ${
+                currentPage === totalPages 
+                  ? 'bg-[#1c1c22] text-slate-600 cursor-not-allowed' 
+                  : 'bg-[#2c2c35] text-white hover:bg-[#8b5cf6] hover:text-black cursor-pointer'
+              }`}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
