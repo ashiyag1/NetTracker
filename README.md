@@ -4,35 +4,42 @@ NetTrack is a deployment-ready, full-stack MERN (MongoDB, Express, React, Node.j
 
 This system replaces manual, error-prone spreadsheet tracking with a highly secure, real-time digital register featuring **Role-Based Access Control (RBAC)**, **Multi-Tenant Data Isolation**, and **Automated Maintenance Triggers**.
 
+> **Note:** To add screenshots to this README, place your image files (e.g., `dashboard.png`) into the `frontend/public/` folder, and then use this exact syntax right here in the text: 
+> `![Dashboard Screenshot](./frontend/public/dashboard.png)`
+
 ---
 
-## 🚀 Enterprise Features
+## 🚀 Enterprise Architecture & Features
 
-1.  **Role-Based Access Control (RBAC):**
-    *   `admin`: Full authority to create, edit, view, and delete hardware records.
-    *   `technician`: Authority to add and edit records (resolving tickets), but cannot delete records.
-    *   `client`: Read-only access to their inventory. They cannot add, edit, or delete items.
-2.  **Google OAuth 2.0 Integration (Login with Google):**
-    *   Full support for passwordless social authentication. Features Google Identity Services on the frontend and secure Google Tokeninfo validation on the backend.
-    *   *Security Rule:* New Google sign-ins are automatically registered as `client` users mapped to `MVD Headquarters` to prevent unauthorized admin access.
-3.  **Multi-Tenant Data Partitioning:**
-    *   Strict security boundaries. Clients logged into the portal can **only view assets installed at their specific company** (e.g. HDFC client users cannot see Cisco devices). Admins/Technicians maintain visibility across the entire multi-client register.
-4.  **MyGate-style Issue Reporting:**
-    *   Clients have a single active action: **`Report Issue`**. Clicking this sends a sanitized request to the backend that flags the device as **`Broken`** and freezes other fields. Technicians are immediately notified on their dashboard and mark it back to **`Active`** upon resolution.
-5.  **Vercel Cron Job Warranty Scanner:**
-    *   An automated, time-based scheduler running every night at 12:00 AM. It queries the database for devices whose manufacturer warranties are expiring in 30 days and logs them for replacement alerts.
-6.  **Audit-Ready CSV Export:**
-    *   One-click client-side export allows administrators to download the currently filtered list of inventory directly into standard CSV spreadsheets.
+### 1. Robust MVC Backend Architecture
+The Node/Express backend strictly follows the **Model-View-Controller (MVC)** design pattern. All database logic and business rules are decoupled into a dedicated `controllers/` layer, ensuring the HTTP `routes/` layer remains clean, modular, and highly testable.
 
+### 2. Frontend API Service Layer
+The React frontend completely abstracts raw network calls away from UI components. A dedicated API Service Layer (`services/api.js`) centralizes all `fetch()` logic, error handling, and `Authorization: Bearer` token injection. 
+
+### 3. Load-Tested Scalability & Client-Side Pagination
+The MongoDB database was successfully load-tested with **10,000+ synthetic hardware records**. To maintain perfectly accurate aggregate analytics (Total Active, Broken, Expiring) without crushing browser performance, the React frontend uses **Client-Side UI Pagination**, slicing the 10,000-record array to only render 50 active DOM rows at any given time.
+
+### 4. Role-Based Access Control (RBAC) & Data Isolation
+* **`admin`**: Full authority to create, edit, view, and delete hardware records.
+* **`technician`**: Authority to add and edit records (resolving tickets), but cannot delete records.
+* **`client`**: Strict, multi-tenant data isolation. Clients can **only** view devices installed at their specific company. They are restricted to a single action: flagging a device as "Broken" to report an issue.
+
+### 5. Secure Authentication System
+* **30-Day JWT Sessions:** Token-based sessions balanced for high-security and low-friction usability.
+* **Google OAuth 2.0:** Passwordless social authentication. New sign-ins are dynamically prompted to select their Client Company during a two-step registration flow.
+
+### 6. Automated Lifecycle Tracking (Serverless Cron)
+A Vercel Serverless Cron Job executes a headless script every night at midnight. It securely queries the database (authenticated via `CRON_SECRET`) for devices whose manufacturer warranties are expiring within 30 days, flagging them for immediate hardware replacement.
 
 ---
 
 ## 🛠️ Technology Stack
 
-*   **Frontend:** React.js (Vite compiler) + Tailwind CSS v4 compiler (modern CSS imports, `@tailwindcss/vite` plugin).
-*   **Backend:** Node.js + Express.js (Refactored completely to modern **ES6 ES Modules**).
+*   **Frontend:** React.js (Vite compiler) + Tailwind CSS v4 compiler.
+*   **Backend:** Node.js + Express.js (ES6 Modules).
 *   **Database:** MongoDB Atlas (Mongoose ODM).
-*   **Authentication & Tokens:** Edge-compatible **`jose`** library (TextEncoder-based JWT signature signing and verification).
+*   **Authentication & Tokens:** Edge-compatible **`jose`** library (JWT signature signing and verification).
 *   **Security:** Password hashing via `bcryptjs`.
 
 ---
@@ -41,25 +48,26 @@ This system replaces manual, error-prone spreadsheet tracking with a highly secu
 
 ```text
 NetTrack/
+├── api/                     # Vercel Serverless Function entry points
 ├── Backend/                 # Express Server & DB connection (ES Modules)
-│   ├── middleware/          # Security checks (authMiddleware.js with protect & authorize)
+│   ├── controllers/         # MVC Business Logic (authController, deviceController)
+│   ├── middleware/          # Security checks (authMiddleware.js)
 │   ├── models/              # Mongoose Schemas (Device.js, User.js)
-│   ├── routes/              # API Endpoints (deviceRoutes.js, authRoutes.js, cronRoutes.js)
-│   ├── security-audit.js    # Security integration test suite (10/10 tests passed)
+│   ├── routes/              # Clean API Endpoints mapped to controllers
+│   ├── seed.js              # 10,000 Record Synthetic Data Generator
+│   ├── security-audit.js    # Security integration test suite
 │   ├── vercel.json          # Serverless routing & Cron Job schedules
-│   ├── server.js            # Node server entry point
-│   └── .env                 # Port, MongoDB URI, and secrets (gitignored)
+│   └── server.js            # Local Node server entry point
 │
 ├── frontend/                # React Vite client
 │   ├── src/
-│   │   ├── assets/          # Static assets (hero.jpg backdrop)
-│   │   ├── components/      # Stats, DeviceTable, AddDeviceModal, Login, Landing, ExtraTabs
-│   │   ├── App.jsx          # Root view controller & global state
+│   │   ├── services/        # Centralized API Service Layer (api.js)
+│   │   ├── components/      # UI Views (DeviceTable, AddDeviceModal, Login)
+│   │   ├── App.jsx          # Root view controller
 │   │   └── main.jsx         # React DOM renderer
 │   └── vite.config.js       # Vite configuration
 │
-├── package.json             # Root npm scripts & concurrently configuration
-└── README.md                # Main documentation
+└── package.json             # Root npm scripts & concurrently configuration
 ```
 
 ---
@@ -118,10 +126,9 @@ NetTrack/
     *   React Client: `http://localhost:5173`
     *   Express API: `http://localhost:5000`
 
-6.  **Run Security Audits:**
-    Verify your API security boundaries (JWT checks, RBAC restrictions, and data partitioning) by running our security test script from the root directory:
+6.  **Load Test the Database (Optional):**
+    To inject 10,000 synthetic devices into your cluster for performance testing:
     ```bash
-    npm run audit
+    cd Backend
+    node seed.js
     ```
-
-
